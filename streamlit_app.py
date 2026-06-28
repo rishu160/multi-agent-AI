@@ -1,8 +1,8 @@
-import uuid
+import os
 import httpx
 import streamlit as st
+from uuid import uuid4
 
-import os
 API_URL = os.environ.get("BACKEND_URL", "http://localhost:8000") + "/chat"
 AGENT_COLORS = {"research": "🔍", "code": "💻", "writer": "✍️"}
 
@@ -12,7 +12,7 @@ st.caption("Powered by LangGraph + Claude — routes queries to Research, Code, 
 
 # ── Session state ─────────────────────────────────────────────────────────────
 if "thread_id" not in st.session_state:
-    st.session_state.thread_id = str(uuid.uuid4())
+    st.session_state.thread_id = str(uuid4())
 if "history" not in st.session_state:
     st.session_state.history = []
 
@@ -42,7 +42,7 @@ with st.sidebar:
     st.header("Session")
     st.code(st.session_state.thread_id, language=None)
     if st.button("New conversation"):
-        st.session_state.thread_id = str(uuid.uuid4())
+        st.session_state.thread_id = str(uuid4())
         st.session_state.history = []
         st.rerun()
 

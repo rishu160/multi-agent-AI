@@ -1,4 +1,4 @@
-import uuid
+from uuid import uuid4
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -24,7 +24,7 @@ class ChatResponse(BaseModel):
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
-    thread_id = req.thread_id or str(uuid.uuid4())
+    thread_id = req.thread_id or str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
     initial_state = {
