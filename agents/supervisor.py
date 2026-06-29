@@ -1,15 +1,17 @@
 import os
+import time
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from state import AgentState
 
 _SYSTEM = """You are a routing supervisor. Classify the user query into exactly one category:
 
-- research  -> needs current facts, news, or web lookup
-- code      -> needs calculation, algorithm, data analysis, or runnable code
+- research  -> needs current facts, news, web lookup, or real-world information
+- code      -> needs algorithm, data analysis, file processing, or complex programming
+- math      -> needs arithmetic, calculation, equation solving, statistics, or number crunching
 - writer    -> needs creative writing, summarisation, explanation, or structured prose
 
-Respond with ONLY one word: research, code, or writer.
+Respond with ONLY one word: research, code, math, or writer.
 If there is critic feedback, take it into account when re-routing."""
 
 _llm = None
@@ -35,8 +37,15 @@ def supervisor_node(state: AgentState) -> dict:
         SystemMessage(content=_SYSTEM),
         HumanMessage(content=state["query"] + feedback_note),
     ]
+    t0 = time.time()
     response = _get_llm().invoke(messages)
+    elapsed = round(time.time() - t0, 2)
+
     route = response.content.strip().lower()
-    if route not in {"research", "code", "writer"}:
+    if route not in {"research", "code", "math", "writer"}:
         route = "writer"
-    return {"route": route, "critic_feedback": ""}
+
+    trace = state.get("agent_trace", [])
+    trace.append({"agent": "supervisor", "route": route, "latency_s": elapsed})
+
+    return {"route": route, "critic_feedback": "", "agent_trace": trace}

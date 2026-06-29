@@ -1,4 +1,5 @@
 import os
+import time
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from state import AgentState
@@ -26,6 +27,8 @@ def _get_llm():
 def research_node(state: AgentState) -> dict:
     llm, search = _get_llm()
     messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=state["query"])]
+    t0 = time.time()
+    tools_used = 0
 
     try:
         response = llm.invoke(messages)
@@ -37,13 +40,13 @@ def research_node(state: AgentState) -> dict:
                 tool_results.append(
                     ToolMessage(content=str(result), tool_call_id=tc["id"])
                 )
+                tools_used += 1
             messages = messages + [response] + tool_results
             response = llm.invoke(messages)
 
         output = response.content
 
     except Exception as e:
-        # Fallback: answer without search if tool call fails
         fallback_llm = ChatGroq(
             model="llama-3.3-70b-versatile",
             groq_api_key=os.environ.get("GROQ_API_KEY", ""),
@@ -56,7 +59,13 @@ def research_node(state: AgentState) -> dict:
         response = fallback_llm.invoke(fallback_msg)
         output = response.content
 
+    elapsed = round(time.time() - t0, 2)
+    trace = state.get("agent_trace", [])
+    trace.append({"agent": "research", "tools_used": tools_used, "latency_s": elapsed})
+
     return {
         "agent_outputs": {**state.get("agent_outputs", {}), "research": output},
         "messages": [HumanMessage(content=f"[Research Agent]: {output}")],
+        "agent_trace": trace,
+        "token_estimate": state.get("token_estimate", 0) + 1024,
     }

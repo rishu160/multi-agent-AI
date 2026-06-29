@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from state import AgentState
@@ -25,11 +26,9 @@ def _get_llm():
 
 
 def _extract_code(text: str) -> str:
-    """Extract code from ```python ... ``` blocks."""
     match = re.search(r"```python\s*(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
-    # fallback: try plain ``` block
     match = re.search(r"```\s*(.*?)```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
@@ -39,6 +38,7 @@ def _extract_code(text: str) -> str:
 def code_node(state: AgentState) -> dict:
     llm = _get_llm()
     messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=state["query"])]
+    t0 = time.time()
     response = llm.invoke(messages)
 
     explanation = response.content
@@ -51,7 +51,13 @@ def code_node(state: AgentState) -> dict:
     else:
         output = explanation
 
+    elapsed = round(time.time() - t0, 2)
+    trace = state.get("agent_trace", [])
+    trace.append({"agent": "code", "executed": bool(code), "latency_s": elapsed})
+
     return {
         "agent_outputs": {**state.get("agent_outputs", {}), "code": output},
         "messages": [HumanMessage(content=f"[Code Agent]: {output}")],
+        "agent_trace": trace,
+        "token_estimate": state.get("token_estimate", 0) + 2048,
     }

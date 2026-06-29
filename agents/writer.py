@@ -1,4 +1,5 @@
 import os
+import time
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from state import AgentState
@@ -29,9 +30,17 @@ def writer_node(state: AgentState) -> dict:
     )
     user_content = f"{state['query']}\n\n{context}".strip()
     messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=user_content)]
+    t0 = time.time()
     response = _get_llm().invoke(messages)
+    elapsed = round(time.time() - t0, 2)
     output = response.content
+
+    trace = state.get("agent_trace", [])
+    trace.append({"agent": "writer", "latency_s": elapsed})
+
     return {
         "agent_outputs": {**prior, "writer": output},
         "messages": [HumanMessage(content=f"[Writer Agent]: {output}")],
+        "agent_trace": trace,
+        "token_estimate": state.get("token_estimate", 0) + 2048,
     }
