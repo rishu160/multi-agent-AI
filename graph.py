@@ -16,7 +16,7 @@ MAX_RETRIES = 2
 
 
 def route_after_supervisor(state: AgentState) -> str:
-    return state["route"]  # "research" | "code" | "math" | "writer"
+    return state["route"]
 
 
 def route_after_critic(state: AgentState) -> str:
@@ -33,7 +33,7 @@ def _promote_best_effort(state: AgentState) -> dict:
     return {"final_answer": best}
 
 
-def build_graph(db_path: str | None = None) -> "CompiledGraph":  # type: ignore[name-defined]
+def build_graph(db_path: str | None = None):
     builder = StateGraph(AgentState)
 
     builder.add_node("supervisor", supervisor_node)
@@ -58,10 +58,7 @@ def build_graph(db_path: str | None = None) -> "CompiledGraph":  # type: ignore[
     builder.add_conditional_edges(
         "critic",
         route_after_critic,
-        {
-            "end": "promote_best_effort",
-            "retry": "supervisor",
-        },
+        {"end": "promote_best_effort", "retry": "supervisor"},
     )
 
     builder.add_edge("promote_best_effort", END)
